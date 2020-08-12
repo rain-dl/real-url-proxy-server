@@ -26,11 +26,11 @@ from huya import huya
 class RealUrlExtractor:
     __metaclass__ = ABCMeta
 
-    def __init__(self, room, min_refresh_timespan, auto_refresh):
+    def __init__(self, room, auto_refresh, auto_refresh_timespan):
         self.room = room
         self.real_url = None
-        self.min_refresh_timespan = min_refresh_timespan
         self.auto_refresh = auto_refresh
+        self.auto_refresh_timespan = auto_refresh_timespan
         self.last_refresh_time = datetime.min
 
     @abstractmethod
@@ -38,7 +38,7 @@ class RealUrlExtractor:
         self.last_refresh_time = datetime.now()
 
     def get_real_url(self, bit_rate):
-        if self.real_url is None or ((bit_rate == 'refresh' or self.auto_refresh) and (datetime.now() - self.last_refresh_time).seconds >= self.min_refresh_timespan):
+        if self.real_url is None or bit_rate == 'refresh' or (self.auto_refresh and (datetime.now() - self.last_refresh_time).seconds >= self.auto_refresh_timespan):
             self._extract_real_url()
 
 class HuYaRealUrlExtractor(RealUrlExtractor):
@@ -103,7 +103,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
 
                 try:
                     if room not in douyu_processor_map.keys():
-                        douyu_processor_map[room] = DouYuRealUrlExtractor(room, 10, False)
+                        douyu_processor_map[room] = DouYuRealUrlExtractor(room, False, 0)
 
                     real_url = douyu_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
@@ -120,7 +120,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
 
                 try:
                     if room not in huya_processor_map.keys():
-                        huya_processor_map[room] = HuYaRealUrlExtractor(room, 3600 * 2, True)
+                        huya_processor_map[room] = HuYaRealUrlExtractor(room, True, 3600 * 2)
 
                     real_url = huya_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
