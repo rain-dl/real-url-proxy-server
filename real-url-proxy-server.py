@@ -17,11 +17,8 @@ from http.server import SimpleHTTPRequestHandler
 from http.server import HTTPServer
 from socketserver import ThreadingMixIn
 import functools
-import subprocess
 from threading import Timer
-import json
 import argparse
-import os
 from datetime import datetime
 from douyu import DouYu
 from huya import huya
@@ -29,18 +26,19 @@ from huya import huya
 class RealUrlExtractor:
     __metaclass__ = ABCMeta
 
-    def __init__(self, room, min_refresh_timespan):
+    def __init__(self, room, min_refresh_timespan, auto_refresh):
         self.room = room
         self.real_url = None
         self.min_refresh_timespan = min_refresh_timespan
-        self.last_refresh_time = datetime.now()
+        self.auto_refresh = auto_refresh
+        self.last_refresh_time = datetime.min
 
     @abstractmethod
     def _extract_real_url(self):
         self.last_refresh_time = datetime.now()
 
     def get_real_url(self, bit_rate):
-        if self.real_url is None or (bit_rate == 'refresh' and (datetime.now() - self.last_refresh_time).seconds >= self.min_refresh_timespan):
+        if self.real_url is None or ((bit_rate == 'refresh' or self.auto_refresh) and (datetime.now() - self.last_refresh_time).seconds >= self.min_refresh_timespan):
             self._extract_real_url()
 
 class HuYaRealUrlExtractor(RealUrlExtractor):
@@ -105,7 +103,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
 
                 try:
                     if room not in douyu_processor_map.keys():
-                        douyu_processor_map[room] = DouYuRealUrlExtractor(room, 3600)
+                        douyu_processor_map[room] = DouYuRealUrlExtractor(room, 10, False)
 
                     real_url = douyu_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
@@ -122,7 +120,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
 
                 try:
                     if room not in huya_processor_map.keys():
-                        huya_processor_map[room] = HuYaRealUrlExtractor(room, 3600)
+                        huya_processor_map[room] = HuYaRealUrlExtractor(room, 3600 * 2, True)
 
                     real_url = huya_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
