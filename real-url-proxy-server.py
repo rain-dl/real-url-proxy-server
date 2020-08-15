@@ -17,7 +17,7 @@ from http.server import SimpleHTTPRequestHandler
 from http.server import HTTPServer
 from socketserver import ThreadingMixIn
 import functools
-from threading import Timer
+from threading import Timer, Lock
 import argparse
 from datetime import datetime
 from douyu import DouYu
@@ -25,20 +25,39 @@ from huya import huya
 
 class RealUrlExtractor:
     __metaclass__ = ABCMeta
+    lock = Lock()
 
-    def __init__(self, room, auto_refresh, auto_refresh_timespan):
+    def __init__(self, room, auto_refresh_interval):
         self.room = room
         self.real_url = None
-        self.auto_refresh = auto_refresh
-        self.auto_refresh_timespan = auto_refresh_timespan
+        self.auto_refresh_interval = auto_refresh_interval
         self.last_refresh_time = datetime.min
+        if self.auto_refresh_interval > 0:
+            self.refresh_timer = Timer(self.auto_refresh_interval, self.refresh_real_url)
+
+    def reset_refresh_timer(self):
+        if self.auto_refresh_interval > 0:
+            self.refresh_timer.cancel()
+            self.refresh_timer = Timer(self.auto_refresh_interval, self.refresh_real_url)
+            self.refresh_timer.start()
+
+    def refresh_real_url(self):
+        RealUrlExtractor.lock.acquire()
+        try:
+            self._extract_real_url()
+        except:
+            pass
+        RealUrlExtractor.lock.release()
 
     @abstractmethod
     def _extract_real_url(self):
         self.last_refresh_time = datetime.now()
+        self.reset_refresh_timer()
+        print('extracted url: ', end='')
+        print(self.real_url)
 
     def get_real_url(self, bit_rate):
-        if self.real_url is None or bit_rate == 'refresh' or (self.auto_refresh and (datetime.now() - self.last_refresh_time).seconds >= self.auto_refresh_timespan):
+        if self.real_url is None or bit_rate == 'refresh':
             self._extract_real_url()
 
 class HuYaRealUrlExtractor(RealUrlExtractor):
@@ -81,8 +100,9 @@ class DouYuRealUrlExtractor(RealUrlExtractor):
         return self.real_url.replace('.flv?', '_' + bit_rate + '.flv?')
 
 class RealUrlRequestHandler(SimpleHTTPRequestHandler):
-    def __init__(self, *args, processor_maps, **kwargs):
+    def __init__(self, *args, processor_maps, auto_refresh_interval, **kwargs):
         self.processor_maps = processor_maps
+        self.auto_refresh_interval = auto_refresh_interval
         super().__init__(*args, **kwargs)
 
     def do_GET(self):
@@ -103,7 +123,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
 
                 try:
                     if room not in douyu_processor_map.keys():
-                        douyu_processor_map[room] = DouYuRealUrlExtractor(room, False, 0)
+                        douyu_processor_map[room] = DouYuRealUrlExtractor(room, self.auto_refresh_interval)
 
                     real_url = douyu_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
@@ -120,7 +140,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
 
                 try:
                     if room not in huya_processor_map.keys():
-                        huya_processor_map[room] = HuYaRealUrlExtractor(room, True, 3600 * 2)
+                        huya_processor_map[room] = HuYaRealUrlExtractor(room, self.auto_refresh_interval)
 
                     real_url = huya_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
@@ -149,10 +169,11 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A proxy server to get real url of live providers.')
     parser.add_argument('-p', '--port', type=int, required=True, help='Binding port of HTTP server.')
+    parser.add_argument('-r', '--refresh', type=int, default=7200, help='Auto refresh interval in seconds, 0 means disable auto refresh.')
     args = parser.parse_args()
 
     processor_maps = {}
-    HandlerClass = functools.partial(RealUrlRequestHandler, processor_maps=processor_maps)
+    HandlerClass = functools.partial(RealUrlRequestHandler, processor_maps=processor_maps, auto_refresh_interval=args.refresh)
     ServerClass  = ThreadingHTTPServer
     #Protocol     = "HTTP/1.0"
 
