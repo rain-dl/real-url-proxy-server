@@ -30,15 +30,20 @@ class RealUrlExtractor:
     def __init__(self, room, auto_refresh_interval):
         self.room = room
         self.real_url = None
+        self.last_valid_real_url = None
         self.auto_refresh_interval = auto_refresh_interval
         self.last_refresh_time = datetime.min
         if self.auto_refresh_interval > 0:
             self.refresh_timer = Timer(self.auto_refresh_interval, self.refresh_real_url)
 
-    def reset_refresh_timer(self):
+    def reset_refresh_timer(self, failover):
         if self.auto_refresh_interval > 0:
             self.refresh_timer.cancel()
-            self.refresh_timer = Timer(self.auto_refresh_interval, self.refresh_real_url)
+            if failover:
+                refresh_interval = self.auto_refresh_interval / 2
+            else:
+                refresh_interval = self.auto_refresh_interval
+            self.refresh_timer = Timer(refresh_interval, self.refresh_real_url)
             self.refresh_timer.start()
 
     def refresh_real_url(self):
@@ -51,10 +56,24 @@ class RealUrlExtractor:
 
     @abstractmethod
     def _extract_real_url(self):
+        failover = True;
+        if self._is_url_valid(self.real_url):
+            self.last_valid_real_url = self.real_url
+            failover = False
+        elif self.last_valid_real_url is not None:
+            self.real_url = self.last_valid_real_url
+
         self.last_refresh_time = datetime.now()
-        self.reset_refresh_timer()
-        print('extracted url: ', end='')
-        print(self.real_url)
+        self.reset_refresh_timer(failover)
+        if failover:
+            print('failed to extract real url')
+        else:
+            print('extracted url: ', end='')
+            print(self.real_url)
+
+    @abstractmethod
+    def _is_url_valid(self, url):
+        return False
 
     def get_real_url(self, bit_rate):
         if self.real_url is None or bit_rate == 'refresh':
@@ -65,13 +84,16 @@ class HuYaRealUrlExtractor(RealUrlExtractor):
         self.real_url = huya(self.room)
         super()._extract_real_url()
 
+    def _is_url_valid(self, url):
+        return url is not None and isinstance(url, dict)
+
     def get_real_url(self, bit_rate):
         super().get_real_url(bit_rate)
 
         if bit_rate == 'refresh':
             bit_rate = None
 
-        if self.real_url is None or not isinstance(self.real_url, dict):
+        if not self._is_url_valid(self.real_url):
             return None
         if bit_rate is None or len(bit_rate) == 0:
             return self.real_url['BD']
@@ -87,13 +109,16 @@ class DouYuRealUrlExtractor(RealUrlExtractor):
             self.real_url = 'None'
         super()._extract_real_url()
 
+    def _is_url_valid(self, url):
+        return url is not None and url != 'None'
+
     def get_real_url(self, bit_rate):
         super().get_real_url(bit_rate)
 
         if bit_rate == 'refresh':
             bit_rate = None
 
-        if self.real_url == 'None':
+        if not self._is_url_valid(self.real_url):
             return None;
         if bit_rate is None or len(bit_rate) == 0:
             return self.real_url
