@@ -15,7 +15,7 @@ class DouYu:
         self.t13 = str(int((time.time() * 1000)))
 
         self.s = requests.Session()
-        self.res = self.s.get('https://m.douyu.com/' + str(rid)).text
+        self.res = self.s.get('https://m.douyu.com/' + str(rid), timeout=30).text
         result = re.search(r'rid":(\d{1,7}),"vipId', self.res)
 
         if result:

@@ -36,7 +36,7 @@ def huya(room_id):
             'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 '
                           '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
         }
-        response = requests.get(url=room_url, headers=header).text
+        response = requests.get(url=room_url, headers=header, timeout=30).text
         livelineurl = re.findall(r'liveLineUrl = "([\s\S]*?)";', response)[0]
         if livelineurl:
             if 'replay' in livelineurl:
