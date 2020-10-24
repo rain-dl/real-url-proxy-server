@@ -56,7 +56,7 @@ class RealUrlExtractor:
 
     @abstractmethod
     def _extract_real_url(self):
-        failover = True;
+        failover = True
         if self._is_url_valid(self.real_url):
             self.last_valid_real_url = self.real_url
             failover = False
@@ -119,7 +119,7 @@ class DouYuRealUrlExtractor(RealUrlExtractor):
             bit_rate = None
 
         if not self._is_url_valid(self.real_url):
-            return None;
+            return None
         if bit_rate is None or len(bit_rate) == 0:
             return self.real_url
         return self.real_url.replace('.flv?', '_' + bit_rate + '.flv?')
