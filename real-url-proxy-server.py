@@ -22,6 +22,7 @@ import argparse
 from datetime import datetime
 from douyu import DouYu
 from huya import huya
+from bilibili import BiliBili
 
 class RealUrlExtractor:
     __metaclass__ = ABCMeta
@@ -124,6 +125,30 @@ class DouYuRealUrlExtractor(RealUrlExtractor):
             return self.real_url
         return self.real_url.replace('.flv?', '_' + bit_rate + '.flv?')
 
+class BilibiliRealUrlExtractor(RealUrlExtractor):
+    def _extract_real_url(self):
+        try:
+            self.real_url = BiliBili(self.room).get_real_url()
+        except:
+            self.real_url = 'None'
+        super()._extract_real_url()
+
+    def _is_url_valid(self, url):
+        return url is not None and url != 'None'
+
+    def get_real_url(self, bit_rate):
+        super().get_real_url(bit_rate)
+
+        if bit_rate == 'refresh':
+            bit_rate = None
+
+        if not self._is_url_valid(self.real_url):
+            return None
+        if 'hls_url' in self.real_url:
+            return self.real_url['hls_url']
+        else:
+            return self.real_url['flv_url']
+
 class RealUrlRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, processor_maps, auto_refresh_interval, **kwargs):
         self.processor_maps = processor_maps
@@ -158,6 +183,23 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                         return
                 except Exception as e:
                     print("Failed to extract douyu real url! Error: %s" % (str(e)))
+            elif provider == 'bilibili':
+                if provider not in self.processor_maps.keys():
+                    self.processor_maps[provider] = {}
+                bilibili_processor_map = self.processor_maps[provider]
+
+                try:
+                    if room not in bilibili_processor_map.keys():
+                        bilibili_processor_map[room] = BilibiliRealUrlExtractor(room, self.auto_refresh_interval)
+
+                    real_url = bilibili_processor_map[room].get_real_url(bit_rate)
+                    if real_url is not None:
+                        self.send_response(301)
+                        self.send_header('Location', real_url)
+                        self.end_headers()
+                        return
+                except Exception as e:
+                    print("Failed to extract bilibili real url! Error: %s" % (str(e)))
             elif provider == 'huya':
                 if provider not in self.processor_maps.keys():
                     self.processor_maps[provider] = {}
