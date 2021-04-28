@@ -37,8 +37,13 @@ def huya(room_id):
                           '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
         }
         response = requests.get(url=room_url, headers=header, timeout=30).text
-        livelineurl = re.findall(r'liveLineUrl = "([\s\S]*?)";', response)[0]
-        if livelineurl:
+        livelineurl_base64 = re.findall(r'liveLineUrl = "([\s\S]*?)";', response)[0]
+        if livelineurl_base64:
+            try:
+                livelineurl = str(base64.b64decode(livelineurl_base64), "utf-8")
+            except Exception:
+                livelineurl = livelineurl_base64
+
             if 'replay' in livelineurl:
                 return '直播录像：https:' + livelineurl
             else:
