@@ -12,19 +12,21 @@ def live(e):
     i, b = e.split('?')
     r = i.split('/')
     s = re.sub(r'.(flv|m3u8)', '', r[-1])
-    c = b.split('&', 3)
+    c = b.split('&')
     c = [i for i in c if i != '']
     n = {i.split('=')[0]: i.split('=')[1] for i in c}
     fm = urllib.parse.unquote(n['fm'])
     u = base64.b64decode(fm).decode('utf-8')
     p = u.split('_')[0]
     f = str(int(time.time() * 1e7))
+    ctype = n['ctype']
+    t = n['t']
+    mf = hashlib.md5((f + '|' + ctype + '|' + t).encode('utf-8')).hexdigest()
     ll = n['wsTime']
-    t = '0'
-    h = '_'.join([p, t, s, f, ll])
+    uid = '0'
+    h = '_'.join([p, uid, s, mf, ll])
     m = hashlib.md5(h.encode('utf-8')).hexdigest()
-    y = c[-1]
-    url = "{}?wsSecret={}&wsTime={}&u={}&seqid={}&{}".format(i, m, ll, t, f, y)
+    url = "{}?wsSecret={}&wsTime={}&uid={}&seqid={}&ctype={}&ver=1&t={}".format(i, m, ll, uid, f, ctype, t)
     return url
 
 
