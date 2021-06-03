@@ -18,15 +18,16 @@ def live(e):
     fm = urllib.parse.unquote(n['fm'])
     u = base64.b64decode(fm).decode('utf-8')
     p = u.split('_')[0]
-    f = str(int(time.time() * 1e7))
+    seqid = str(int(time.time() * 1e7))
     ctype = n['ctype']
     t = n['t']
-    mf = hashlib.md5((f + '|' + ctype + '|' + t).encode('utf-8')).hexdigest()
+    mf = hashlib.md5((seqid + '|' + ctype + '|' + t).encode('utf-8')).hexdigest()
     ll = n['wsTime']
+    ratio = n.get('ratio', '')
     uid = '0'
     h = '_'.join([p, uid, s, mf, ll])
     m = hashlib.md5(h.encode('utf-8')).hexdigest()
-    url = "{}?wsSecret={}&wsTime={}&uid={}&seqid={}&ctype={}&ver=1&t={}".format(i, m, ll, uid, f, ctype, t)
+    url = "{}?wsSecret={}&wsTime={}&uid={}&seqid={}&ratio={}&ctype={}&ver=1&t={}".format(i, m, ll, uid, seqid, ratio, ctype, t)
     return url
 
 
@@ -50,7 +51,7 @@ def huya(room_id):
                 return '直播录像：https:' + livelineurl
             else:
                 s_url = live(livelineurl)
-                b_url = live(livelineurl.replace('_2000', ''))
+                b_url = live(livelineurl.replace('ratio=2000', 'ratio=').replace('_2000', ''))
                 real_url = {
                     '2000p': "https:" + s_url,
                     'BD': "https:" + b_url
