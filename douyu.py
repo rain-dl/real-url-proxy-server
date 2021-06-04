@@ -48,12 +48,9 @@ class DouYu:
         res = self.s.post(url, headers=headers, data=data).json()
         error = res['error']
         data = res['data']
-        key = ''
         if data:
-            rtmp_live = data['rtmp_live']
-            key = re.search(r'(\d{1,7}[0-9a-zA-Z]+)_?\d{0,4}(/playlist|.m3u8)', rtmp_live).group(1)
-        return error, data['rtmp_url'] + '/' + data['rtmp_live']
-        # return error, key
+            return error, data['rtmp_url'] + '/' + data['rtmp_live']
+        return error, ''
 
     def get_js(self):
         result = re.search(r'(function ub98484234.*)\s(var.*)', self.res).group()
