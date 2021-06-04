@@ -122,8 +122,9 @@ class DouYuRealUrlExtractor(RealUrlExtractor):
         if not self._is_url_valid(self.real_url):
             return None
         if bit_rate is None or len(bit_rate) == 0:
-            return self.real_url
-        return self.real_url.replace('.flv?', '_' + bit_rate + '.flv?')
+            return self.real_url['2000p']
+        if bit_rate in self.real_url.keys():
+            return self.real_url[bit_rate]
 
 class BilibiliRealUrlExtractor(RealUrlExtractor):
     def _extract_real_url(self):
