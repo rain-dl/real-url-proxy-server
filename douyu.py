@@ -1,4 +1,5 @@
-# 获取斗鱼直播间的真实流媒体地址，默认最高画质。
+# 获取斗鱼直播间的真实流媒体地址，默认最高画质
+# 使用 https://github.com/wbt5/real-url/issues/185 中两位大佬@wjxgzz @4bbu6j5885o3gpv6ss8找到的的CDN，在此感谢！
 import hashlib
 import re
 import time
@@ -9,13 +10,26 @@ import requests
 
 
 class DouYu:
+    """
+    可用来替换返回链接中的主机部分
+    两个阿里的CDN：
+    dyscdnali1.douyucdn.cn
+    dyscdnali3.douyucdn.cn
+    墙外不用带尾巴的akm cdn：
+    hls3-akm.douyucdn.cn
+    hlsa-akm.douyucdn.cn
+    hls1a-akm.douyucdn.cn
+    """
 
     def __init__(self, rid):
-        # 房间号通常为1~7位纯数字，浏览器地址栏中看到的房间号不一定是真实rid.
+        """
+        房间号通常为1~7位纯数字，浏览器地址栏中看到的房间号不一定是真实rid.
+        Args:
+            rid:
+        """
         self.did = '10000000000000000000000000001501'
         self.t10 = str(int(time.time()))
         self.t13 = str(int((time.time() * 1000)))
-        self.live_rate = 0
 
         self.s = requests.Session()
         self.res = self.s.get('https://m.douyu.com/' + str(rid), timeout=30).text
@@ -26,9 +40,6 @@ class DouYu:
         else:
             raise Exception('房间号错误')
 
-    def set_rate(self, rate):
-        self.live_rate = rate
-    
     @staticmethod
     def md5(data):
         return hashlib.md5(data.encode('utf-8')).hexdigest()
@@ -45,12 +56,16 @@ class DouYu:
             'time': self.t13,
             'auth': auth
         }
-        res = self.s.post(url, headers=headers, data=data).json()
+        res = self.s.post(url, headers=headers, data=data, timeout=30).json()
         error = res['error']
         data = res['data']
+        key = ''
+        url = ''
         if data:
-            return error, data['rtmp_url'] + '/' + data['rtmp_live']
-        return error, ''
+            rtmp_live = data['rtmp_live']
+            url = data['rtmp_url'] + '/' + rtmp_live
+            key = re.search(r'(\d{1,7}[0-9a-zA-Z]+)_?\d{0,4}(/playlist|.m3u8)', rtmp_live).group(1)
+        return error, key, url
 
     def get_js(self):
         result = re.search(r'(function ub98484234.*)\s(var.*)', self.res).group()
@@ -67,17 +82,15 @@ class DouYu:
 
         js = execjs.compile(func_sign)
         params = js.call('sign', self.rid, self.did, self.t10)
-        # params += '&ver=219032101&rid={}&rate=-1'.format(self.rid)
-        params += '&ver=219032101&rid={}&rate={}'.format(self.rid, self.live_rate)
+        params += '&ver=219032101&rid={}&rate=-1'.format(self.rid)
 
         url = 'https://m.douyu.com/api/room/ratestream'
-        res = self.s.post(url, params=params).json()['data']
+        res = self.s.post(url, params=params, timeout=30).json()['data']
         key = re.search(r'(\d{1,7}[0-9a-zA-Z]+)_?\d{0,4}(.m3u8|/playlist)', res['url']).group(1)
 
-        return res['url']
-        # return key
+        return key, res['url']
 
-    def get_pc_js(self, cdn='ws-h5'):
+    def get_pc_js(self, cdn='ws-h5', rate=0):
         """
         通过PC网页端的接口获取完整直播源。
         :param cdn: 主线路ws-h5、备用线路tct-h5
@@ -100,30 +113,29 @@ class DouYu:
         js = execjs.compile(func_sign)
         params = js.call('sign', self.rid, self.did, self.t10)
 
-        params += '&cdn={}&rate={}'.format(cdn, self.live_rate)
+        params += '&cdn={}&rate={}'.format(cdn, rate)
         url = 'https://www.douyu.com/lapi/live/getH5Play/{}'.format(self.rid)
-        res = self.s.post(url, params=params).json()['data']
+        res = self.s.post(url, params=params, timeout=30).json()['data']
 
         return res['rtmp_url'] + '/' + res['rtmp_live']
 
     def get_real_url(self):
         ret = {}
-        error, url = self.get_pre()
+        error, key, url = self.get_pre()
         if error == 0:
             ret['900p'] = url
         elif error == 102:
             raise Exception('房间不存在')
         elif error == 104:
             raise Exception('房间未开播')
-        # else:
-        #     key = self.get_js()
-        ret['2000p'] = self.get_js()
-        #ret.append(self.get_pc_js())
+        else:
+            key, url = self.get_js()
+            ret['2000p'] = url
+        ret['flv'] = "http://dyscdnali1.douyucdn.cn/live/{}.flv?uuid=".format(key)
         return ret
 
 
 if __name__ == '__main__':
     r = input('输入斗鱼直播间号：\n')
     s = DouYu(r)
-    s.set_rate(0)
     print(s.get_real_url())
