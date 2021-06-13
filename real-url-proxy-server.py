@@ -23,6 +23,7 @@ from datetime import datetime
 from douyu import DouYu
 from huya import huya
 from bilibili import BiliBili
+import requests
 
 class RealUrlExtractor:
     __metaclass__ = ABCMeta
@@ -81,26 +82,17 @@ class RealUrlExtractor:
             self._extract_real_url()
 
 class HuYaRealUrlExtractor(RealUrlExtractor):
-    def _extract_real_url(self):
-        self.real_url = huya(self.room)
-        super()._extract_real_url()
+    def __init__(self, room, auto_refresh_interval):
+        super().__init__(room, auto_refresh_interval)
+        self.huya = huya(self.room, 1234567890)
 
-    def _is_url_valid(self, url):
-        return url is not None and isinstance(url, dict)
+    def _extract_real_url(self):
+        self.huya.update_live_url_info()
+        print('extracted url: ', end='')
+        print(self.huya.hls_url)
 
     def get_real_url(self, bit_rate):
-        super().get_real_url(bit_rate)
-
-        if bit_rate == 'refresh':
-            bit_rate = None
-
-        if not self._is_url_valid(self.real_url):
-            return None
-        if bit_rate is None or len(bit_rate) == 0:
-            return self.real_url['BD']
-        if bit_rate in self.real_url.keys():
-            return self.real_url[bit_rate]
-        return None
+        return self.huya.get_real_url(bit_rate)
 
 class DouYuRealUrlExtractor(RealUrlExtractor):
     def _extract_real_url(self):
@@ -212,7 +204,16 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
 
                     real_url = huya_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
-                        m3u8_content = '#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1\n' + real_url
+                        try:
+                            header = {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 '
+                                            '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
+                            }
+                            m3u8_content = requests.get(url=real_url, headers=header, timeout=30).text
+                            m3u8_content = m3u8_content.replace(huya_processor_map[room].huya.stream_name, huya_processor_map[room].huya.base_url + '/' + huya_processor_map[room].huya.stream_name)
+                        except:
+                            m3u8_content = '#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1\n' + real_url
                         self.send_response(200)
                         self.send_header('Content-type', "application/vnd.apple.mpegurl")
                         self.send_header("Content-Length", str(len(m3u8_content)))
@@ -220,7 +221,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                         self.wfile.write(m3u8_content.encode('utf-8'))
                         return
                 except Exception as e:
-                    print("Failed to extract huya real url! Error: %s" % (str(e)))
+                    print("Failed to proxy huya hls stream! Error: %s" % (str(e)))
 
         rsp = "Not Found"
         rsp = rsp.encode("gb2312")
