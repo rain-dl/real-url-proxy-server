@@ -25,6 +25,34 @@ from huya import huya
 from bilibili import BiliBili
 import requests
 
+import logging
+from logging import handlers
+
+class Logger(object):
+    level_relations = {
+        'debug': logging.DEBUG,
+        'info': logging.INFO,
+        'warning': logging.WARNING,
+        'error': logging.ERROR,
+        'crit': logging.CRITICAL
+    }
+
+    def __init__(self, filename=None, level='info', when='D', backCount=3, fmt='%(asctime)s - %(levelname)s: %(message)s'):
+        self.logger = logging.getLogger('real-url-proxy-server')
+        format_str = logging.Formatter(fmt)
+        self.logger.setLevel(self.level_relations.get(level))
+        sh = logging.StreamHandler()
+        sh.setFormatter(format_str)
+        self.logger.addHandler(sh)
+
+        if filename is not None:
+            th = handlers.TimedRotatingFileHandler(
+                filename=filename, when=when, backupCount=backCount, encoding='utf-8')
+            th.setFormatter(format_str)
+            self.logger.addHandler(th)
+
+log = None
+
 class RealUrlExtractor:
     __metaclass__ = ABCMeta
     lock = Lock()
@@ -68,10 +96,9 @@ class RealUrlExtractor:
         self.last_refresh_time = datetime.now()
         self.reset_refresh_timer(failover)
         if failover:
-            print('failed to extract real url')
+            log.logger.info('failed to extract real url')
         else:
-            print('extracted url: ', end='')
-            print(self.real_url)
+            log.logger.info('extracted url: %s', self.real_url)
 
     @abstractmethod
     def _is_url_valid(self, url):
@@ -88,11 +115,20 @@ class HuYaRealUrlExtractor(RealUrlExtractor):
 
     def _extract_real_url(self):
         self.huya.update_live_url_info()
-        print('extracted url: ', end='')
-        print(self.huya.hls_url)
+        self.real_url = self.huya.hls_url
+        super()._extract_real_url()
+
+    def _is_url_valid(self, url):
+        return url is not None
 
     def get_real_url(self, bit_rate):
+        super().get_real_url(bit_rate)
+
+        if bit_rate == 'refresh':
+            bit_rate = None
+
         return self.huya.get_real_url(bit_rate)
+
 
 class DouYuRealUrlExtractor(RealUrlExtractor):
     def _extract_real_url(self):
@@ -157,7 +193,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                 bit_rate = s[2]
             else:
                 bit_rate = None
-            print('provider: %s, room: %s, bit_rate: %s' % (provider, room, bit_rate))
+            log.logger.info('provider: %s, room: %s, bit_rate: %s', provider, room, bit_rate)
 
             if provider == 'douyu':
                 if provider not in self.processor_maps.keys():
@@ -175,7 +211,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                         self.end_headers()
                         return
                 except Exception as e:
-                    print("Failed to extract douyu real url! Error: %s" % (str(e)))
+                    log.logger.error("Failed to extract douyu real url! Error: %s", str(e))
             elif provider == 'bilibili':
                 if provider not in self.processor_maps.keys():
                     self.processor_maps[provider] = {}
@@ -192,7 +228,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                         self.end_headers()
                         return
                 except Exception as e:
-                    print("Failed to extract bilibili real url! Error: %s" % (str(e)))
+                    log.logger.error("Failed to extract bilibili real url! Error: %s", str(e))
             elif provider == 'huya':
                 if provider not in self.processor_maps.keys():
                     self.processor_maps[provider] = {}
@@ -221,7 +257,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                         self.wfile.write(m3u8_content.encode('utf-8'))
                         return
                 except Exception as e:
-                    print("Failed to proxy huya hls stream! Error: %s" % (str(e)))
+                    log.logger.error("Failed to proxy huya hls stream! Error: %s", str(e))
 
         rsp = "Not Found"
         rsp = rsp.encode("gb2312")
@@ -239,7 +275,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A proxy server to get real url of live providers.')
     parser.add_argument('-p', '--port', type=int, required=True, help='Binding port of HTTP server.')
     parser.add_argument('-r', '--refresh', type=int, default=7200, help='Auto refresh interval in seconds, 0 means disable auto refresh.')
+    parser.add_argument('-l', '--log', type=str, default=None, help='Log file path name.')
     args = parser.parse_args()
+
+    log = Logger(args.log)
 
     processor_maps = {}
     HandlerClass = functools.partial(RealUrlRequestHandler, processor_maps=processor_maps, auto_refresh_interval=args.refresh)
@@ -252,7 +291,7 @@ if __name__ == '__main__':
     httpd = ServerClass(server_address, HandlerClass)
 
     sa = httpd.socket.getsockname()
-    print("Serving HTTP on", sa[0], "port", sa[1], "...")
+    log.logger.info('Serving HTTP on %s port %d...', sa[0], sa[1])
 
     try:
         httpd.serve_forever()
@@ -260,4 +299,4 @@ if __name__ == '__main__':
         pass
 
     httpd.server_close()
-    print("Server stopped.")
+    log.logger.info('Server stopped.')
