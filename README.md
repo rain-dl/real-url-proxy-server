@@ -4,9 +4,10 @@
 通过斗鱼、虎牙及Bilibili房间号直接访问直播源的代理服务器。
 
 ## 运行
-python3 real-url-proxy-server.py [-h] -p PORT -r REFRESH</br>
+python3 real-url-proxy-server.py [-h] -p PORT -r REFRESH [-l LOG_FILE]</br>
 PORT: 端口号，服务器将监听于 0.0.0.0:PORT。</br>
 REFRESH: 自动刷新间隔（秒），0表示禁止自动刷新。</br>
+LOG_FILE: 日志文件路径，为空则仅输出至控制台。</br>
 
 ## 访问
 **斗鱼**</br>
