@@ -24,9 +24,9 @@ class huya:
         fm = urllib.parse.unquote(n['fm'])
         u = base64.b64decode(fm).decode('utf-8')
         self.hash_prefix = u.split('_')[0]
-        self.ctype = n['ctype']
-        self.txyp = n['txyp']
-        self.fs = n['fs']
+        self.ctype = n.get('ctype', '')
+        self.txyp = n.get('txyp', '')
+        self.fs = n.get('fs', '')
 
     def clear_live_url_info(self):
         self.hash_prefix = None
