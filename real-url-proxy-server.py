@@ -24,6 +24,7 @@ from douyu import DouYu
 from huya import huya
 from bilibili import BiliBili
 import requests
+import re
 
 import logging
 from logging import handlers
@@ -111,11 +112,20 @@ class RealUrlExtractor:
 class HuYaRealUrlExtractor(RealUrlExtractor):
     def __init__(self, room, auto_refresh_interval):
         super().__init__(room, auto_refresh_interval)
-        self.huya = huya(self.room, 1234567890)
+        self.huya = huya(self.room, 1463993859134, 1)
+        self.cdn_index = -1
+        self.last_real_urls = None
+        self.last_get_real_url_time = datetime.min
 
     def _extract_real_url(self):
         self.huya.update_live_url_info()
-        self.real_url = self.huya.hls_url
+        cdn_count = len(self.huya.live_url_infos)
+        if self.cdn_index >= cdn_count:
+            self.cdn_index = 0
+        if cdn_count > 0:
+            self.real_url = list(self.huya.live_url_infos.values())[self.cdn_index]['hls_url']
+        else:
+            self.real_url = None
         super()._extract_real_url()
 
     def _is_url_valid(self, url):
@@ -127,7 +137,27 @@ class HuYaRealUrlExtractor(RealUrlExtractor):
         if bit_rate == 'refresh':
             bit_rate = None
 
-        return self.huya.get_real_url(bit_rate)
+        if self.last_real_urls is None or (datetime.now() - self.last_get_real_url_time).total_seconds() > 120:
+            urls = self.huya.get_real_url(bit_rate)
+            self.last_real_urls = urls
+            self.last_get_real_url_time = datetime.now()
+        else:
+            urls = self.last_real_urls
+
+        if len(urls) > 0:
+            if self.cdn_index >= len(urls):
+                self.cdn_index = 0
+            return urls[self.cdn_index]
+        return None
+
+    def reset_last_get_real_url_time(self):
+        self.last_get_real_url_time = datetime.min
+
+    def stream_name(self):
+        return list(self.huya.live_url_infos.values())[self.cdn_index]['stream_name']
+
+    def base_url(self):
+        return list(self.huya.live_url_infos.values())[self.cdn_index]['base_url']
 
 
 class DouYuRealUrlExtractor(RealUrlExtractor):
@@ -240,17 +270,22 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
 
                     real_url = huya_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
+                        status_code = 200
                         try:
                             header = {
                                 'Content-Type': 'application/x-www-form-urlencoded',
                                 'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 '
                                             '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
                             }
-                            m3u8_content = requests.get(url=real_url, headers=header, timeout=30).text
-                            m3u8_content = m3u8_content.replace(huya_processor_map[room].huya.stream_name, huya_processor_map[room].huya.base_url + '/' + huya_processor_map[room].huya.stream_name)
+                            response = requests.get(url=real_url, headers=header, timeout=30)
+                            status_code = response.status_code
+                            m3u8_content = response.text
+                            m3u8_content = re.sub(r'(^.*?\.ts)', huya_processor_map[room].base_url() + r'/\1', m3u8_content, flags=re.M)
                         except:
                             m3u8_content = '#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1\n' + real_url
-                        self.send_response(200)
+                        if status_code == 403:
+                            huya_processor_map[room].reset_last_get_real_url_time()
+                        self.send_response(status_code)
                         self.send_header('Content-type', "application/vnd.apple.mpegurl")
                         self.send_header("Content-Length", str(len(m3u8_content)))
                         self.end_headers()
