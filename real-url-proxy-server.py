@@ -214,6 +214,11 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
         self.auto_refresh_interval = auto_refresh_interval
         super().__init__(*args, **kwargs)
 
+    def _send_cors_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Content-Length, Authorization')
+
     def do_GET(self):
         s = self.path[1:].split('/')
         if len(s) >= 2:
@@ -237,6 +242,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                     real_url = douyu_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
                         self.send_response(301)
+                        self._send_cors_headers()
                         self.send_header('Location', real_url)
                         self.end_headers()
                         return
@@ -254,6 +260,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                     real_url = bilibili_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
                         self.send_response(301)
+                        self._send_cors_headers()
                         self.send_header('Location', real_url)
                         self.end_headers()
                         return
@@ -286,6 +293,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                         if status_code == 403:
                             huya_processor_map[room].reset_last_get_real_url_time()
                         self.send_response(status_code)
+                        self._send_cors_headers()
                         self.send_header('Content-type', "application/vnd.apple.mpegurl")
                         self.send_header("Content-Length", str(len(m3u8_content)))
                         self.end_headers()
@@ -298,6 +306,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
         rsp = rsp.encode("gb2312")
 
         self.send_response(404)
+        self._send_cors_headers()
         self.send_header("Content-type", "text/html; charset=gb2312")
         self.send_header("Content-Length", str(len(rsp)))
         self.end_headers()
