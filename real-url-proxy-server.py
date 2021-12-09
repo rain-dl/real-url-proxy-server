@@ -137,6 +137,9 @@ class HuYaRealUrlExtractor(RealUrlExtractor):
         if bit_rate == 'refresh':
             bit_rate = None
 
+        if bit_rate == 'switch_cdn':
+            self.cdn_index += 1
+
         if self.last_real_urls is None or (datetime.now() - self.last_get_real_url_time).total_seconds() > 120:
             urls = self.huya.get_real_url(bit_rate)
             self.last_real_urls = urls
@@ -290,6 +293,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                             m3u8_content = re.sub(r'(^.*?\.ts)', huya_processor_map[room].base_url() + r'/\1', m3u8_content, flags=re.M)
                         except:
                             m3u8_content = '#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1\n' + real_url
+                            huya_processor_map[room].cdn_index += 1
                         if status_code == 403:
                             huya_processor_map[room].reset_last_get_real_url_time()
                         self.send_response(status_code)
