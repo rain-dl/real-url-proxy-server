@@ -128,10 +128,10 @@ class DouYu:
             raise Exception('房间不存在')
         elif error == 104:
             raise Exception('房间未开播')
-        else:
-            key, url = self.get_js()
-            ret['2000p'] = url
-        ret['flv'] = "http://dyscdnali1.douyucdn.cn/live/{}.flv?uuid=".format(key)
+        #else:
+        key, url = self.get_js()
+        ret['2000p'] = url
+        #ret['flv'] = "http://dyscdnali1.douyucdn.cn/live/{}.flv?uuid=".format(key)
         return ret
 
 
