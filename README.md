@@ -26,7 +26,7 @@ LOG_FILE: 日志文件路径，为空则仅输出至控制台。</br>
 程序首次获取到实际直播源地址后会缓存下来，后续访问会使用缓存地址。在指定的时间间隔后会自动刷新实际直播源地址，或者通过访问 http://xxx.xxx.xxx.xxx:xxxx/douyu/房间号/refresh 或 http://xxx.xxx.xxx.xxx:xxxx/huya/房间号/refresh 来手动刷新。
 
 ## 其它
-获取到的实际地址会以301跳转或EXTM3U形式返回，播放端得到播放地址后，后续正常播放过程中不会再次访问代理服务器，因此服务器负载和流量均很低。本人在家中将其部署于刷了Padavan的小米路由器上，并通过OTT盒子进行观看。
+获取到的实际地址会以301跳转或EXTM3U形式返回，播放端得到播放地址后，后续正常播放过程中不会再次访问代理服务器，因此服务器负载和流量均很低。本人在家中将其部署于刷了Padavan的小米路由器上，并通过OTT盒子进行观看。（斗鱼，bilibili是301跳转，虎牙会一直访问代理服务器返回#EXTM3U）
 
 ## 感谢
 获取直播源地址使用的douyu.py、huya.py及bilibili.py代码来自于<a href="https://github.com/wbt5/real-url" target="_blank">Real-Url</a>项目，在此表示由衷的感谢！
