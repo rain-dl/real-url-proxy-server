@@ -71,9 +71,16 @@ class huya:
                 response = requests.get(url=room_url, headers=header, timeout=30)
                 if response.status_code == 200:
                     self.clear_live_url_infos()
-                    liveDataBase64 = re.findall(r'"stream": "([\s\S]*?)"', response.text)[0]
-                    if liveDataBase64 != 'null':
-                        liveData = json.loads(str(base64.b64decode(liveDataBase64), 'utf-8'))
+                    liveData = None
+                    streamInfo = re.findall(r'stream: ([\s\S]*?)\n', response.text)
+                    if (len(streamInfo) > 0):
+                        liveData = json.loads(streamInfo[0])
+                    else:
+                        streamInfo = re.findall(r'"stream": "([\s\S]*?)"', response.text)
+                        if (len(streamInfo) > 0):
+                            liveDataBase64 = streamInfo[0]
+                            liveData = json.loads(str(base64.b64decode(liveDataBase64), 'utf-8'))
+                    if liveData is not None:
                         streamInfoList = liveData['data'][0]['gameStreamInfoList']
                         for streamInfo in streamInfoList:
                             live_url_info = {}
@@ -130,7 +137,7 @@ class huya:
 
 if __name__ == '__main__':
     rid = input('输入虎牙直播间号：\n')
-    real_url = huya(rid, 1463993859134, 2).get_real_url()
+    real_url = huya(rid, 1463993859134, 1).get_real_url()
     if real_url is not None:
         print(real_url)
     else:

@@ -113,16 +113,17 @@ class HuYaRealUrlExtractor(RealUrlExtractor):
     def __init__(self, room, auto_refresh_interval):
         super().__init__(room, auto_refresh_interval)
         self.huya = huya(self.room, 1463993859134, 1)
+        self.cdn_count = 0
         self.cdn_index = -1
         self.last_real_urls = None
         self.last_get_real_url_time = datetime.min
 
     def _extract_real_url(self):
         self.huya.update_live_url_info()
-        cdn_count = len(self.huya.live_url_infos)
-        if self.cdn_index >= cdn_count:
+        self.cdn_count = len(self.huya.live_url_infos)
+        if self.cdn_index >= self.cdn_count:
             self.cdn_index = 0
-        if cdn_count > 0:
+        if self.cdn_count > 0:
             self.real_url = list(self.huya.live_url_infos.values())[self.cdn_index]['hls_url']
         else:
             self.real_url = None
@@ -284,30 +285,36 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                         huya_processor_map[room] = HuYaRealUrlExtractor(room, self.auto_refresh_interval)
 
                     real_url = huya_processor_map[room].get_real_url(bit_rate)
-                    if real_url is not None:
-                        status_code = 200
-                        try:
-                            header = {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                                'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 '
-                                            '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
-                            }
-                            response = requests.get(url=real_url, headers=header, timeout=30)
-                            status_code = response.status_code
-                            m3u8_content = response.text
-                            m3u8_content = re.sub(r'(^.*?\.ts)', huya_processor_map[room].base_url() + r'/\1', m3u8_content, flags=re.M)
-                        except:
-                            m3u8_content = '#EXTM3U\n#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=1\n' + real_url
-                            huya_processor_map[room].cdn_index += 1
-                        if status_code == 403:
-                            huya_processor_map[room].reset_last_get_real_url_time()
-                        self.send_response(status_code)
-                        self._send_cors_headers()
-                        self.send_header('Content-type', "application/vnd.apple.mpegurl")
-                        self.send_header("Content-Length", str(len(m3u8_content)))
-                        self.end_headers()
-                        self.wfile.write(m3u8_content.encode('utf-8'))
-                        return
+                    status_code = 200
+                    for i in range(huya_processor_map[room].cdn_count):
+                        if real_url is not None:
+                            try:
+                                header = {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'User-Agent': 'Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 '
+                                                '(KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36 '
+                                }
+                                response = requests.get(url=real_url, headers=header, timeout=30)
+                                status_code = response.status_code
+                                m3u8_content = response.text
+                                if status_code == 403 and m3u8_content == 'Unauthorized':
+                                    huya_processor_map[room].cdn_index += 1
+                                    real_url = huya_processor_map[room].get_real_url(bit_rate)
+                                    continue
+                                m3u8_content = re.sub(r'(^.*?\.ts)', huya_processor_map[room].base_url() + r'/\1', m3u8_content, flags=re.M)
+                                break
+                            except:
+                                huya_processor_map[room].cdn_index += 1
+                                real_url = huya_processor_map[room].get_real_url(bit_rate)
+                    if status_code == 403:
+                        huya_processor_map[room].reset_last_get_real_url_time()
+                    self.send_response(status_code)
+                    self._send_cors_headers()
+                    self.send_header('Content-type', "application/vnd.apple.mpegurl")
+                    self.send_header("Content-Length", str(len(m3u8_content)))
+                    self.end_headers()
+                    self.wfile.write(m3u8_content.encode('utf-8'))
+                    return
                 except Exception as e:
                     log.logger.error("Failed to proxy huya hls stream! Error: %s", str(e))
 
