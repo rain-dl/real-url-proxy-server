@@ -136,7 +136,7 @@ class huya:
 
 
 if __name__ == '__main__':
-    rid = input('输入虎牙直播间号：\n')
+    rid = input('输入虎牙直播间号：688\n')
     real_url = huya(rid, 1463993859134, 1).get_real_url()
     if real_url is not None:
         print(real_url)
