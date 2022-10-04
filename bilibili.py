@@ -3,6 +3,8 @@
 # qn=250超清
 # qn=400蓝光
 # qn=10000原画
+# 获取方法参考：https://blog.csdn.net/zy1281539626/article/details/112451021
+
 import requests
 
 
@@ -23,25 +25,27 @@ class BiliBili:
                 room_id = res['data']['room_id']
 
                 def u(pf):
-                    f_url = 'https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl'
+                    f_url = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo'
                     params = {
-                        'cid': room_id,
+                        'room_id': room_id,
+                        'no_playurl': 0,
+                        'mask': 0,
                         'qn': 10000,
                         'platform': pf,
-                        'https_url_req': 1,
-                        'ptype': 16
+                        'protocol': 1,  # http_hls: 1
+                        'format': 2,    # fmp4: 2
+                        'codec': '0,1'  # avc: 0, hevc: 1
                     }
                     resp = s.get(f_url, params=params, timeout=30).json()
                     try:
-                        durl = resp['data']['durl']
-                        real_url = durl[-1]['url']
+                        codec = resp['data']['playurl_info']['playurl']['stream'][0]['format'][0]['codec'][0]
+                        real_url = codec['url_info'][0]['host'] + codec['base_url'] + codec['url_info'][0]['extra']
                         return real_url
                     except KeyError or IndexError:
                         raise Exception('获取失败')
 
                 return {
-                    'flv_url': u('web'),
-                    'hls_url': u('h5')
+                    'hls_url': u('web'),
                 }
 
             else:
