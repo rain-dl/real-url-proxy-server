@@ -202,7 +202,7 @@ class BilibiliRealUrlExtractor(RealUrlExtractor):
         super()._extract_real_url()
 
     def _is_url_valid(self, url):
-        return url is not None and url != 'None'
+        return url is not None and len(url) > 0
 
     def get_real_url(self, bit_rate):
         super().get_real_url(bit_rate)
@@ -212,10 +212,7 @@ class BilibiliRealUrlExtractor(RealUrlExtractor):
 
         if not self._is_url_valid(self.real_url):
             return None
-        if 'hls_url' in self.real_url:
-            return self.real_url['hls_url']
-        else:
-            return self.real_url['flv_url']
+        return list(self.real_url.values())[0]
 
 class RealUrlRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, processor_maps, auto_refresh_interval, **kwargs):

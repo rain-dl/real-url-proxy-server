@@ -6,7 +6,7 @@
 # 获取方法参考：https://blog.csdn.net/zy1281539626/article/details/112451021
 
 import requests
-
+import json
 
 class BiliBili:
 
@@ -24,29 +24,33 @@ class BiliBili:
             if live_status == 1:
                 room_id = res['data']['room_id']
 
-                def u(pf):
-                    f_url = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo'
-                    params = {
-                        'room_id': room_id,
-                        'no_playurl': 0,
-                        'mask': 0,
-                        'qn': 10000,
-                        'platform': pf,
-                        'protocol': 1,  # http_hls: 1
-                        'format': 2,    # fmp4: 2
-                        'codec': '0,1'  # avc: 0, hevc: 1
-                    }
-                    resp = s.get(f_url, params=params, timeout=30).json()
-                    try:
-                        codec = resp['data']['playurl_info']['playurl']['stream'][0]['format'][0]['codec'][0]
-                        real_url = codec['url_info'][0]['host'] + codec['base_url'] + codec['url_info'][0]['extra']
-                        return real_url
-                    except KeyError or IndexError:
-                        raise Exception('获取失败')
-
-                return {
-                    'hls_url': u('web'),
+                urls = {}
+                f_url = 'https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo'
+                params = {
+                    'room_id': room_id,
+                    'no_playurl': 0,
+                    'mask': 0,
+                    'qn': 10000,
+                    'platform': 'web',
+                    'protocol': '0,1',  # http_stream: 0, http_hls: 1
+                    'format': '0,1,2',  # flv: 0, ts: 1, fmp4: 2
+                    'codec': '0,1'      # avc: 0, hevc: 1
                 }
+                resp = s.get(f_url, params=params, timeout=30).json()
+                try:
+                    streams = resp['data']['playurl_info']['playurl']['stream']
+                    for stream in streams:
+                        protocol_name = stream['protocol_name']
+                        for format in stream['format']:
+                            format_name = format['format_name']
+                            for codec in format['codec']:
+                                codec_name = codec['codec_name']
+                                for url_info in codec['url_info']:
+                                    urls[protocol_name + '_' + format_name + '_' + codec_name] = url_info['host'] + codec['base_url'] + url_info['extra']
+
+                    return {k: urls[k] for k in sorted(urls.keys())}
+                except KeyError or IndexError:
+                    raise Exception('获取失败')
 
             else:
                 raise Exception('未开播')
@@ -65,4 +69,4 @@ def get_real_url(rid):
 
 if __name__ == '__main__':
     r = input('请输入bilibili直播房间号：\n')
-    print(get_real_url(r))
+    print(json.dumps(get_real_url(r), indent=4))
