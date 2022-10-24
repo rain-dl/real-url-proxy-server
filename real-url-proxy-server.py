@@ -20,6 +20,7 @@ import functools
 from threading import Timer, Lock
 import argparse
 from datetime import datetime
+from time import sleep
 from douyu import DouYu
 from huya import huya
 from bilibili import BiliBili
@@ -62,6 +63,7 @@ class RealUrlExtractor:
         self.room = room
         self.real_url = None
         self.last_valid_real_url = None
+        self._extracting_real_url = False
         self.auto_refresh_interval = auto_refresh_interval
         self.last_refresh_time = datetime.min
         if self.auto_refresh_interval > 0:
@@ -107,7 +109,18 @@ class RealUrlExtractor:
 
     def get_real_url(self, bit_rate):
         if self.real_url is None or bit_rate == 'refresh':
-            self._extract_real_url()
+            if not self._extracting_real_url:
+                RealUrlExtractor.lock.acquire()
+                self._extracting_real_url = True
+                try:
+                    self._extract_real_url()
+                except:
+                    pass
+                self._extracting_real_url = False
+                RealUrlExtractor.lock.release()
+            else:
+                while self._extracting_real_url:
+                    sleep(100)
 
 class HuYaRealUrlExtractor(RealUrlExtractor):
     def __init__(self, room, auto_refresh_interval):
