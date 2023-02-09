@@ -3,10 +3,15 @@
 import hashlib
 import re
 import time
-import json
 
-import execjs
 import requests
+
+try:
+    import quickjs
+    use_quickjs = True
+except ImportError:
+    import execjs
+    use_quickjs = False
 
 
 class DouYu:
@@ -65,8 +70,12 @@ class DouYu:
     def get_js(self):
         result = re.search(r'(function ub98484234.*)\s(var.*)', self.res).group()
         func_ub9 = re.sub(r'eval.*;}', 'strc;}', result)
-        js = execjs.compile(func_ub9)
-        res = js.call('ub98484234')
+        if use_quickjs:
+            js_func = quickjs.Function('ub98484234', func_ub9)
+            res = js_func()
+        else:
+            js = execjs.compile(func_ub9)
+            res = js.call('ub98484234')
 
         v = re.search(r'v=(\d+)', res).group(1)
         rb = DouYu.md5(self.rid + self.did + self.t10 + v)
@@ -75,8 +84,13 @@ class DouYu:
         func_sign = func_sign.replace('(function (', 'function sign(')
         func_sign = func_sign.replace('CryptoJS.MD5(cb).toString()', '"' + rb + '"')
 
-        js = execjs.compile(func_sign)
-        params = js.call('sign', self.rid, self.did, self.t10)
+        if use_quickjs:
+            js_func = quickjs.Function('sign', func_sign)
+            params = js_func(self.rid, self.did, self.t10)
+        else:
+            js = execjs.compile(func_sign)
+            params = js.call('sign', self.rid, self.did, self.t10)
+
         params += '&ver=219032101&rid={}&rate=-1'.format(self.rid)
 
         url = 'https://m.douyu.com/api/room/ratestream'
@@ -95,8 +109,12 @@ class DouYu:
         res = self.s.get('https://www.douyu.com/' + str(self.rid), timeout=30).text
         result = re.search(r'(vdwdae325w_64we[\s\S]*function ub98484234[\s\S]*?)function', res).group(1)
         func_ub9 = re.sub(r'eval.*?;}', 'strc;}', result)
-        js = execjs.compile(func_ub9)
-        res = js.call('ub98484234')
+        if use_quickjs:
+            js_func = quickjs.Function('ub98484234', func_ub9)
+            res = js_func()
+        else:
+            js = execjs.compile(func_ub9)
+            res = js.call('ub98484234')
 
         v = re.search(r'v=(\d+)', res).group(1)
         rb = DouYu.md5(self.rid + self.did + self.t10 + v)
@@ -105,8 +123,12 @@ class DouYu:
         func_sign = func_sign.replace('(function (', 'function sign(')
         func_sign = func_sign.replace('CryptoJS.MD5(cb).toString()', '"' + rb + '"')
 
-        js = execjs.compile(func_sign)
-        params = js.call('sign', self.rid, self.did, self.t10)
+        if use_quickjs:
+            js_func = quickjs.Function('sign', func_sign)
+            params = js_func(self.rid, self.did, self.t10)
+        else:
+            js = execjs.compile(func_sign)
+            params = js.call('sign', self.rid, self.did, self.t10)
 
         params += '&cdn={}&rate={}'.format(cdn, rate)
         url = 'https://www.douyu.com/lapi/live/getH5Play/{}'.format(self.rid)
