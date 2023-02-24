@@ -64,7 +64,7 @@ class DouYu:
         if data:
             rtmp_live = data['rtmp_live']
             url = data['rtmp_url'] + '/' + rtmp_live
-            key = re.search(r'(\d{1,8}[0-9a-zA-Z]+)_?\d{0,4}(/playlist|.m3u8)', rtmp_live).group(1)
+            key = re.search(r'(\d{1,8}[0-9a-zA-Z]+)_?\d{0,4}p?(.m3u8|/playlist)', rtmp_live).group(1)
         return error, key, url
 
     def get_js(self):
@@ -148,7 +148,7 @@ class DouYu:
         else:
             key, url = self.get_js()
             ret['2000p'] = url
-        ret['flv'] = "http://akm-tct.douyucdn.cn/live/{}.flv?uuid=".format(key)
+        ret['flv'] = "http://hw-tct.douyucdn.cn/live/{}.flv?uuid=".format(key)
         return ret
 
 
