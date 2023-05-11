@@ -148,7 +148,7 @@ class DouYu:
         else:
             key, url = self.get_js()
             ret['2000p'] = url
-        ret['flv'] = "http://hdltc1.douyucdn.cn/live/{}.flv?uuid=".format(key)
+        ret['flv'] = "http://huos1a.douyucdn2.cn/live/{}.flv?uuid=".format(key)
         return ret
 
 
