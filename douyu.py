@@ -1,5 +1,4 @@
 # 获取斗鱼直播间的真实流媒体地址，默认最高画质
-# 使用 https://github.com/wbt5/real-url/issues/185 中两位大佬@wjxgzz @4bbu6j5885o3gpv6ss8找到的的CDN，在此感谢！
 import hashlib
 import re
 import time
@@ -15,12 +14,6 @@ except ImportError:
 
 
 class DouYu:
-    """
-    可用来替换返回链接中的主机部分
-    akm-tct.douyucdn.cn
-    vplay3a.douyucdn.cn
-    """
-
     def __init__(self, rid):
         """
         房间号通常为1~8位纯数字，浏览器地址栏中看到的房间号不一定是真实rid.
@@ -148,7 +141,7 @@ class DouYu:
         else:
             key, url = self.get_js()
             ret['2000p'] = url
-        ret['flv'] = "http://hdltc1.douyucdn.cn/live/{}.flv?uuid=".format(key)
+        ret['flv'] = "http://openhls-tct.douyucdn2.cn/live/{}.flv?uuid=".format(key)
         return ret
 
 
