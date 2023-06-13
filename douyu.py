@@ -21,8 +21,6 @@ class DouYu:
             rid:
         """
         self.did = '10000000000000000000000000001501'
-        self.t10 = str(int(time.time()))
-        self.t13 = str(int((time.time() * 1000)))
 
         self.s = requests.Session()
         self.res = self.s.get('https://m.douyu.com/' + str(rid), timeout=30).text
@@ -43,10 +41,11 @@ class DouYu:
             'rid': self.rid,
             'did': self.did
         }
-        auth = DouYu.md5(self.rid + self.t13)
+        t13 = str(int((time.time() * 1000)))
+        auth = DouYu.md5(self.rid + t13)
         headers = {
             'rid': self.rid,
-            'time': self.t13,
+            'time': t13,
             'auth': auth
         }
         res = self.s.post(url, headers=headers, data=data, timeout=30).json()
@@ -71,7 +70,8 @@ class DouYu:
             res = js.call('ub98484234')
 
         v = re.search(r'v=(\d+)', res).group(1)
-        rb = DouYu.md5(self.rid + self.did + self.t10 + v)
+        t10 = str(int(time.time()))
+        rb = DouYu.md5(self.rid + self.did + t10 + v)
 
         func_sign = re.sub(r'return rt;}\);?', 'return rt;}', res)
         func_sign = func_sign.replace('(function (', 'function sign(')
@@ -79,10 +79,10 @@ class DouYu:
 
         if use_quickjs:
             js_func = quickjs.Function('sign', func_sign)
-            params = js_func(self.rid, self.did, self.t10)
+            params = js_func(self.rid, self.did, t10)
         else:
             js = execjs.compile(func_sign)
-            params = js.call('sign', self.rid, self.did, self.t10)
+            params = js.call('sign', self.rid, self.did, t10)
 
         params += '&ver=219032101&rid={}&rate=-1'.format(self.rid)
 
@@ -110,7 +110,8 @@ class DouYu:
             res = js.call('ub98484234')
 
         v = re.search(r'v=(\d+)', res).group(1)
-        rb = DouYu.md5(self.rid + self.did + self.t10 + v)
+        t10 = str(int(time.time()))
+        rb = DouYu.md5(self.rid + self.did + t10 + v)
 
         func_sign = re.sub(r'return rt;}\);?', 'return rt;}', res)
         func_sign = func_sign.replace('(function (', 'function sign(')
@@ -118,10 +119,10 @@ class DouYu:
 
         if use_quickjs:
             js_func = quickjs.Function('sign', func_sign)
-            params = js_func(self.rid, self.did, self.t10)
+            params = js_func(self.rid, self.did, t10)
         else:
             js = execjs.compile(func_sign)
-            params = js.call('sign', self.rid, self.did, self.t10)
+            params = js.call('sign', self.rid, self.did, t10)
 
         params += '&cdn={}&rate={}'.format(cdn, rate)
         url = 'https://www.douyu.com/lapi/live/getH5Play/{}'.format(self.rid)
@@ -138,10 +139,9 @@ class DouYu:
             raise Exception('房间不存在')
         elif error == 104:
             raise Exception('房间未开播')
-        else:
-            key, url = self.get_js()
-            ret['2000p'] = url
-        ret['flv'] = "http://openhls-tct.douyucdn2.cn/live/{}.flv?uuid=".format(key)
+        key, url = self.get_js()
+        ret['2000p'] = url
+        #ret['flv'] = "http://openhls-tct.douyucdn2.cn/live/{}.flv?uuid=".format(key)
         return ret
 
 
