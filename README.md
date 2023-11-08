@@ -32,10 +32,20 @@ LOG_FILE: 日志文件路径，为空则仅输出至控制台。</br>
 ```bash
 # 从本地构建镜像
 docker build --tag real-url-proxy-server .
-docker run -p 8888:8888 -e PORT=8888 -e REFRESH=7200 real-url-proxy-server
+docker run -d --name real-url-proxy-server --restart unless-stopped \
+    -p 8888:8888 \
+    -e PORT=8888 \
+    -e REFRESH=7200 \
+    real-url-proxy-server
 
 # 使用 Docker Hub 镜像
-docker run -p 8888:8888 -e PORT=8888 -e REFRESH=7200 futuretech6/real-url-proxy-server  # 目前支持amd64, amr64
+docker run -d --name real-url-proxy-server --restart unless-stopped \
+    -p 8888:8888 \
+    -e PORT=8888 \
+    -e REFRESH=7200 \
+    futuretech6/real-url-proxy-server  # 目前支持 amd64, amr64
+# 也可也使用 docker-compose
+docker compose up -d
 ```
 
 ## 感谢
