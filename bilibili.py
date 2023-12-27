@@ -14,10 +14,14 @@ class BiliBili:
         self.rid = rid
 
     def get_real_url(self):
+        header = {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36'
+        }
+
         # 先获取直播状态和真实房间号
         r_url = 'https://api.live.bilibili.com/room/v1/Room/room_init?id={}'.format(self.rid)
         with requests.Session() as s:
-            res = s.get(r_url, timeout=30).json()
+            res = s.get(r_url, headers=header, timeout=30).json()
         code = res['code']
         if code == 0:
             live_status = res['data']['live_status']
@@ -36,7 +40,7 @@ class BiliBili:
                     'format': '0,1,2',  # flv: 0, ts: 1, fmp4: 2
                     'codec': '0,1'      # avc: 0, hevc: 1
                 }
-                resp = s.get(f_url, params=params, timeout=30).json()
+                resp = s.get(f_url, params=params, headers=header, timeout=30).json()
                 try:
                     streams = resp['data']['playurl_info']['playurl']['stream']
                     for stream in streams:
