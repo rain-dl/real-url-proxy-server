@@ -14,10 +14,14 @@ def ffprobe(media_path):
         else:
             cmd = [cmd]
 
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        out, err =  p.communicate()
+        try:
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+            out, err = p.communicate(timeout=10)
+            return json.loads(out)
+        except:
+            p.kill()
+            return None
 
-        return json.loads(out)
     else:
         raise IOError('No such media file or not supported: ' + media_path)
 
@@ -28,7 +32,7 @@ def prober(urls, dump_stream_info):
         url = urls.get()
         try:
             meta = ffprobe(url)
-            if (len(meta) > 0):
+            if (meta is not None and len(meta) > 0 and 'streams' in meta and len(meta['streams']) > 0):
                 lock.acquire()
                 print(url)
                 if (dump_stream_info):

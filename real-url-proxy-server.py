@@ -24,6 +24,7 @@ from time import sleep
 from douyu import DouYu
 from huya import huya
 from bilibili import BiliBili
+from youtube import youtube
 import requests
 import re
 
@@ -227,6 +228,27 @@ class BilibiliRealUrlExtractor(RealUrlExtractor):
             return None
         return list(self.real_url.values())[0]
 
+class YoutubeRealUrlExtractor(RealUrlExtractor):
+    def _extract_real_url(self):
+        try:
+            self.real_url = youtube(self.room).get_real_url()
+        except:
+            self.real_url = 'None'
+        super()._extract_real_url()
+
+    def _is_url_valid(self, url):
+        return url is not None and len(url) > 0
+
+    def get_real_url(self, bit_rate):
+        super().get_real_url(bit_rate)
+
+        if bit_rate == 'refresh':
+            bit_rate = None
+
+        if not self._is_url_valid(self.real_url):
+            return None
+        return self.real_url[0]
+
 class RealUrlRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, processor_maps, auto_refresh_interval, **kwargs):
         self.processor_maps = processor_maps
@@ -285,6 +307,24 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
                         return
                 except Exception as e:
                     log.logger.error("Failed to extract bilibili real url! Error: %s", str(e))
+            elif provider == 'youtube':
+                if provider not in self.processor_maps.keys():
+                    self.processor_maps[provider] = {}
+                youtube_processor_map = self.processor_maps[provider]
+
+                try:
+                    if room not in youtube_processor_map.keys():
+                        youtube_processor_map[room] = YoutubeRealUrlExtractor(room, self.auto_refresh_interval)
+
+                    real_url = youtube_processor_map[room].get_real_url(bit_rate)
+                    if real_url is not None:
+                        self.send_response(301)
+                        self._send_cors_headers()
+                        self.send_header('Location', real_url)
+                        self.end_headers()
+                        return
+                except Exception as e:
+                    log.logger.error("Failed to extract youtube real url! Error: %s", str(e))
             elif provider == 'huya':
                 if provider not in self.processor_maps.keys():
                     self.processor_maps[provider] = {}
