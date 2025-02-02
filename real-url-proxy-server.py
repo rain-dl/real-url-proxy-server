@@ -229,9 +229,13 @@ class BilibiliRealUrlExtractor(RealUrlExtractor):
         return list(self.real_url.values())[0]
 
 class YoutubeRealUrlExtractor(RealUrlExtractor):
+    def __init__(self, room, auto_refresh_interval, cookie_file):
+        super().__init__(room, auto_refresh_interval)
+        self.youtube = youtube(self.room, cookie_file)
+
     def _extract_real_url(self):
         try:
-            self.real_url = youtube(self.room).get_real_url()
+            self.real_url = self.youtube.get_real_url()
         except:
             self.real_url = 'None'
         super()._extract_real_url()
@@ -250,9 +254,10 @@ class YoutubeRealUrlExtractor(RealUrlExtractor):
         return self.real_url[0]
 
 class RealUrlRequestHandler(SimpleHTTPRequestHandler):
-    def __init__(self, *args, processor_maps, auto_refresh_interval, **kwargs):
+    def __init__(self, *args, processor_maps, auto_refresh_interval, youtube_cookie_file, **kwargs):
         self.processor_maps = processor_maps
         self.auto_refresh_interval = auto_refresh_interval
+        self.youtube_cookie_file = youtube_cookie_file
         super().__init__(*args, **kwargs)
 
     def _send_cors_headers(self):
@@ -314,7 +319,7 @@ class RealUrlRequestHandler(SimpleHTTPRequestHandler):
 
                 try:
                     if room not in youtube_processor_map.keys():
-                        youtube_processor_map[room] = YoutubeRealUrlExtractor(room, self.auto_refresh_interval)
+                        youtube_processor_map[room] = YoutubeRealUrlExtractor(room, self.auto_refresh_interval, self.youtube_cookie_file)
 
                     real_url = youtube_processor_map[room].get_real_url(bit_rate)
                     if real_url is not None:
@@ -385,13 +390,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A proxy server to get real url of live providers.')
     parser.add_argument('-p', '--port', type=int, required=True, help='Binding port of HTTP server.')
     parser.add_argument('-r', '--refresh', type=int, default=7200, help='Auto refresh interval in seconds, 0 means disable auto refresh.')
+    parser.add_argument('-k', '--youtube_cookie_file', type=str, default=None, help='Cookie file for youtube.')
     parser.add_argument('-l', '--log', type=str, default=None, help='Log file path name.')
     args = parser.parse_args()
 
     log = Logger(args.log)
 
     processor_maps = {}
-    HandlerClass = functools.partial(RealUrlRequestHandler, processor_maps=processor_maps, auto_refresh_interval=args.refresh)
+    HandlerClass = functools.partial(RealUrlRequestHandler, processor_maps=processor_maps, auto_refresh_interval=args.refresh, youtube_cookie_file=args.youtube_cookie_file)
     ServerClass  = ThreadingHTTPServer
     #Protocol     = "HTTP/1.0"
 
