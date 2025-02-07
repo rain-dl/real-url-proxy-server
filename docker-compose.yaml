@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  real-url-proxy-server:
+    build:
+      context: .
+    image: futuretech6/real-url-proxy-server
+    container_name: real-url-proxy-server
+    restart: unless-stopped
+    ports:
+      - 8888:8888
+    environment:
+      - PORT=8888
+      - REFRESH=7200
