@@ -126,7 +126,7 @@ class RealUrlExtractor:
 class HuYaRealUrlExtractor(RealUrlExtractor):
     def __init__(self, room, auto_refresh_interval):
         super().__init__(room, auto_refresh_interval)
-        self.huya = huya(self.room, 1463993859134, 1)
+        self.huya = huya(self.room, 1099531840859, 2)
         self.cdn_count = 0
         self.cdn_index = 0
         self.last_real_urls = None

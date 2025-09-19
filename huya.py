@@ -128,16 +128,19 @@ class huya:
                 url = "{}?wsSecret={}&wsTime={}&uuid={}&uid={}&seqid={}&ratio={}&txyp={}&fs={}&ctype={}&ver=1&t={}".format(
                     live_url_info['hls_url'], hash1, wsTime, live_url_info['uuid'], self.user_id, seqid, ratio, live_url_info['txyp'],
                     live_url_info['fs'], live_url_info['ctype'], live_url_info['t'])
-            else:
+            elif 'live' in live_url_info['ctype']:
                 url = "{}?wsSecret={}&wsTime={}&seqid={}&ctype={}&ver=1&txyp={}&fs={}&ratio={}&u={}&t={}&sv=2107230339".format(
                     live_url_info['hls_url'], hash1, wsTime, seqid, live_url_info['ctype'], live_url_info['txyp'], live_url_info['fs'], ratio, self.user_id, live_url_info['t'])
+            else:
+                url = "{}?wsSecret={}&wsTime={}&ctype={}&seqid={}&uid={}&fs={}&ver=1&t={}".format(
+                    live_url_info['hls_url'], hash1, wsTime, live_url_info['ctype'], seqid, self.user_id, live_url_info['fs'], live_url_info['t'])
             urls.append(url)
         return urls
 
 
 if __name__ == '__main__':
     rid = input('输入虎牙直播间号：\n')
-    real_url = huya(rid, 1463993859134, 1).get_real_url()
+    real_url = huya(rid, 1099531840859, 2).get_real_url()
     if real_url is not None:
         print(real_url)
     else:
