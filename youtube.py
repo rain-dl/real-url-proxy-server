@@ -8,7 +8,7 @@ class youtube:
         else:
             self.youtube_url = 'https://www.youtube.com/watch?v=' + url
 
-        self.ydl_opts = {'quiet': True, 'extractor-args': 'youtube:player-client=web;formats=incomplete'}
+        self.ydl_opts = {'quiet': True, 'remote-components': 'ejs:github', 'extractor-args': 'youtube:player-client=web;formats=incomplete'}
         if cookiefile is not None:
             self.ydl_opts['cookiefile'] = cookiefile
         if proxy is not None:
